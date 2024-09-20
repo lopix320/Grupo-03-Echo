@@ -10,7 +10,7 @@ import 'package:pi_flutter/views/cart_page.dart';
 import 'package:pi_flutter/views/historic_page.dart';
 import 'package:pi_flutter/views/home_page.dart';
 import 'package:pi_flutter/views/login_page.dart';
-import 'package:pi_flutter/views/produto_page.dart';
+import 'package:pi_flutter/views/paciente_page.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../components/custom_bottom_navigation_bar.dart';
@@ -43,9 +43,8 @@ class _MainPageState extends State<MainPage> {
     switch (_currentIndex) {
       case 0:
         return HomePage();
+
       case 1:
-        return CartPage();
-      case 2:
         return HistoricPage();
       default:
         return HomePage();
@@ -61,7 +60,7 @@ class _MainPageState extends State<MainPage> {
           elevation: 0,
           centerTitle: true,
           title: const Text(
-            'Echo',
+            'Senior Care',
             style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w700),
           ),
           actions: [
@@ -72,42 +71,10 @@ class _MainPageState extends State<MainPage> {
                 color: Colors.black,
               ),
             ),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _currentIndex = 1;
-                });
-              },
-              icon: const Icon(
-                Icons.shopping_cart_outlined,
-                color: Colors.black,
-              ),
-            )
           ],
         );
+
       case 1:
-        return AppBar(
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          title: const Text(
-            'Carrinho de Compras',
-            style: TextStyle(
-                color: Color.fromARGB(255, 0, 0, 0),
-                fontWeight: FontWeight.w500),
-          ),
-          actions: [
-            // IconButton(
-            //   onPressed: () {},
-            //   icon: const Icon(
-            //     Icons.shopping_cart_outlined,
-            //     color: Colors.black,
-            //   ),
-            // )
-          ],
-        );
-      case 2:
         return AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
@@ -211,33 +178,6 @@ class _MainPageState extends State<MainPage> {
               ),
               InkWell(
                 onTap: () {
-                  setState(() {
-                    _currentIndex = 2;
-                  });
-                  _key.currentState?.closeEndDrawer();
-                },
-                child: Container(
-                  height: 40,
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Histórico de compras',
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-              Divider(
-                height: 5,
-                color: Colors.black,
-              ),
-              InkWell(
-                onTap: () {
                   Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
@@ -271,7 +211,7 @@ class _MainPageState extends State<MainPage> {
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (value) {
-            if (value == 2) {
+            if (value == 1) {
               _key.currentState?.openEndDrawer();
             } else {
               setState(() {
@@ -284,8 +224,6 @@ class _MainPageState extends State<MainPage> {
           items: const [
             BottomNavigationBarItem(
                 icon: Icon(Icons.home_outlined), label: "HOME"),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.shopping_bag_outlined), label: "PEDIDO"),
             BottomNavigationBarItem(
                 icon: Icon(Icons.account_circle_outlined), label: "CONTA"),
           ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pi_flutter/home_controller.dart';
-import 'package:pi_flutter/views/produto_page.dart';
+import 'package:pi_flutter/views/paciente_page.dart';
 import 'views/login_page.dart';
 import 'views/home_page.dart';
 
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       routes: {
         // '/': (context) => HomeController(child: LoginPage()),
         '/home': (context) => HomePage(),
-        '/produto': (context) => ProdutoPage(),
+        '/produto': (context) => PacientePage(),
       },
     );
   }
