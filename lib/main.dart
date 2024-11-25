@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pi_flutter/util/FontSizeProvider.dart';
+import 'package:provider/provider.dart';
 import 'myapp.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
       overlays: [SystemUiOverlay.top]);
-  runApp(MyApp());
+  runApp(ChangeNotifierProvider(
+    create: (_) => FontSizeProvider(),
+    child: MyApp(),
+  ));
 }
 
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
@@ -14,13 +15,16 @@ import 'package:pi_flutter/repository/product_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:pi_flutter/views/home_page.dart';
 import 'package:pi_flutter/views/main_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../components/custom_checkbox.dart';
 
 class PacientePage extends StatefulWidget {
+  dynamic paciente;
   // var product;
-  PacientePage({super.key});
+  PacientePage({super.key, required this.paciente});
 
   @override
   State<PacientePage> createState() => _PacientePageState();
@@ -29,6 +33,20 @@ class PacientePage extends StatefulWidget {
 class _PacientePageState extends State<PacientePage> {
   var quantity = 1;
   var orderTotal;
+  final String message = "Olá, tudo bem?";
+
+  Future<bool> openWhatsApp(phoneNumber) async {
+    final Uri url = Uri.parse(
+        "https://wa.me/55$phoneNumber?text=${Uri.encodeComponent(message)}");
+    // if (await canLaunchUrl(url)) {
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+    // } else {
+    //   print("Não foi possível abrir o WhatsApp.");
+    // }
+
+    return true;
+  }
+
   Color getColor(Set<MaterialState> states) {
     const Set<MaterialState> interactiveStates = <MaterialState>{
       MaterialState.pressed,
@@ -41,9 +59,60 @@ class _PacientePageState extends State<PacientePage> {
     return Colors.black;
   }
 
+  Future<Map<String, dynamic>?> getUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString('user');
+
+    if (userData != null) {
+      return jsonDecode(userData);
+    }
+    return null;
+  }
+
+  Future<bool> onSubmit(id_paciente) async {
+    try {
+      dynamic user = await getUser();
+      dynamic id_cuidador = user['user'][0]['cuidador'][0]['id_cuidador'];
+
+      Map body = {
+        'id_paciente': id_paciente,
+        'id_cuidador': id_cuidador,
+      };
+
+      print(body);
+
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:4445/usuario/acceptContratacao'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['ok']) {
+          print('Contratacao feita ');
+        }
+
+        // Salvar informações do usuário no SharedPreferences
+
+        return true;
+      } else {
+        print('Erro na requisição: ${response.statusCode} ');
+        return false;
+      }
+    } catch (e) {
+      print('Erro na requisição: $e');
+      return false;
+    }
+  }
+
   @override
   void initState() {
     // TODO: implement initState
+    print('paciente user: ${widget.paciente}');
     super.initState();
     // orderTotal = widget.product.price;
   }
@@ -79,7 +148,7 @@ class _PacientePageState extends State<PacientePage> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              PacienteCardBig(nome: "Gabriel Lopes"),
+              PacienteCardBig(nome: widget.paciente['nome']),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -93,7 +162,8 @@ class _PacientePageState extends State<PacientePage> {
                     ],
                   ),
                   CupertinoSwitch(
-                    value: true,
+                    value: widget.paciente['paciente'][0]
+                        ['mobilidade_reduzida'],
                     onChanged: (value) {
                       setState(() {
                         // tru = value;
@@ -117,7 +187,7 @@ class _PacientePageState extends State<PacientePage> {
                     ],
                   ),
                   CupertinoSwitch(
-                    value: true,
+                    value: widget.paciente['paciente'][0]['acomp_24'],
                     onChanged: (value) {
                       setState(() {
                         // _value = value;
@@ -154,7 +224,7 @@ class _PacientePageState extends State<PacientePage> {
                     ],
                   ),
                   CupertinoSwitch(
-                    value: true,
+                    value: widget.paciente['paciente'][0]['acessibilidade'],
                     onChanged: (value) {
                       setState(() {
                         // _value = value;
@@ -173,51 +243,100 @@ class _PacientePageState extends State<PacientePage> {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(0, 0, 0, 20),
                   child: Text(
-                    'Observações:',
+                    'Serviços:',
                     textAlign: TextAlign.left,
                     style: TextStyle(fontSize: 15, color: Colors.black),
                   ),
                 ),
               ),
-              TextField(
-                onChanged: (text) {
-                  setState(() {
-                    // email = text;
-                  });
-                },
-                keyboardType: TextInputType.emailAddress,
-                minLines: 5,
-                maxLines: null,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.fromLTRB(25, 0, 25, 0),
-                  // labelText:
-                  //     'Digite as informações adicionais aqui caso tenha marcado a caixinha acima:',
-                  // labelStyle: TextStyle(fontSize: 15),
-                  label: Text(
-                    "Digite as informações adicionais aqui caso tenha marcado a caixinha acima:",
-                    textAlign: TextAlign.left,
-                  ),
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.all(Radius.circular(15))),
-                  filled: true,
-                  fillColor: Color.fromARGB(255, 232, 232, 232),
-                ),
-              ),
-              SizedBox(
+              ListView.separated(
+                  physics: NeverScrollableScrollPhysics(),
+                  separatorBuilder: (context, index) => const SizedBox(
+                        height: 20,
+                      ),
+                  shrinkWrap: true,
+                  itemCount:
+                      widget.paciente['paciente'][0]['pacienteServico'].length,
+                  itemBuilder: (_, index) {
+                    return Text(
+                        " - ${widget.paciente['paciente'][0]['pacienteServico'][index]['servico']['descricao']}");
+                  }),
+              const SizedBox(
                 height: 20,
               ),
-              Align(alignment: Alignment.bottomLeft, child: Text("Telefone:")),
-              Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text("(11)93320-9295")),
-              SizedBox(
+              const Align(
+                  alignment: Alignment.bottomLeft, child: Text("Telefone:")),
+              widget.paciente['paciente'][0]['contratacoes'][0]['confirmacao']
+                  ? Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(widget.paciente['numero_telefone']))
+                  : const Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text('Contato indisponivel')),
+              const SizedBox(
                 height: 20,
               ),
-              Align(alignment: Alignment.bottomLeft, child: Text("Email:")),
-              Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text("gabriel.lp2008@gmail.com")),
+              const Align(
+                  alignment: Alignment.bottomLeft, child: Text("Email:")),
+              widget.paciente['paciente'][0]['contratacoes'][0]['confirmacao']
+                  ? Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(widget.paciente['email']))
+                  : const Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text('Contato indisponivel')),
+              widget.paciente['paciente'][0]['contratacoes'][0]['confirmacao']
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 70, 0, 20),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            fixedSize:
+                                Size(MediaQuery.of(context).size.width, 60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            backgroundColor: Colors.green),
+                        onPressed:
+                            // email.isEmpty && password.isEmpty
+                            //     ? null
+                            //     :
+                            () async {
+                          await openWhatsApp(
+                              widget.paciente['numero_telefone']);
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Mandar mensgem'),
+                            SizedBox(
+                              width: 10,
+                            ),
+                            Icon(Icons.message_outlined)
+                          ],
+                        ),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 70, 0, 20),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            fixedSize:
+                                Size(MediaQuery.of(context).size.width, 60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            backgroundColor: Color.fromARGB(255, 54, 105, 201)),
+                        onPressed:
+                            // email.isEmpty && password.isEmpty
+                            //     ? null
+                            //     :
+                            () async {
+                          await onSubmit(
+                              widget.paciente['paciente'][0]['id_paciente']);
+                        },
+                        child: const Text('Aceitar contato'),
+                      ),
+                    ),
             ],
           ),
         ),

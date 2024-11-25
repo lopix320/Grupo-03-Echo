@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pi_flutter/components/carrousel_card.dart';
 import 'package:pi_flutter/components/category_scroll.dart';
@@ -6,11 +8,15 @@ import 'package:pi_flutter/models/product_model.dart';
 import 'package:pi_flutter/provider/api_product.dart';
 import 'package:pi_flutter/repository/product_repository.dart';
 import 'package:http/http.dart' as http;
+import 'package:pi_flutter/util/FontSizeProvider.dart';
 import 'package:pi_flutter/views/cart_page.dart';
 import 'package:pi_flutter/views/historic_page.dart';
 import 'package:pi_flutter/views/home_page.dart';
 import 'package:pi_flutter/views/login_page.dart';
 import 'package:pi_flutter/views/paciente_page.dart';
+import 'package:pi_flutter/views/user_list_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../components/custom_bottom_navigation_bar.dart';
@@ -38,6 +44,42 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   var _currentIndex = 0;
+
+  void _showGoldAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Conta Ouro'),
+          content: Text('Conta Ouro adquirida'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Fechar o modal
+              },
+              child: Text('Fechar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<dynamic> getUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString('user');
+
+    if (userData != null) {
+      dynamic user = jsonDecode(userData);
+      if (user['user'][0]['cuidador'].length > 0) {
+        dynamic tipo_conta = user['user'][0]['cuidador'][0]['nivel_conta'];
+        return tipo_conta;
+      } else {
+        return "F";
+      }
+    }
+    return null;
+  }
 
   Widget setPage() {
     switch (_currentIndex) {
@@ -107,7 +149,7 @@ class _MainPageState extends State<MainPage> {
           elevation: 0,
           centerTitle: true,
           title: const Text(
-            'Echo',
+            'SENIOR CARE',
             style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w700),
           ),
           actions: [
@@ -146,67 +188,173 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final fontSizeProvider = Provider.of<FontSizeProvider>(context);
+
     return Scaffold(
         key: _key,
         endDrawer: Drawer(
-          child: Column(
-            children: [
-              Container(
-                height: 60,
-                color: Color.fromARGB(255, 255, 255, 255),
-                child: const Row(
-                  // mainAxisAlignment: MainAxisAlignment.center,
+          child: FutureBuilder(
+              future: getUser(),
+              builder: (context, snapshot) {
+                var tipo_conta = snapshot.data;
+                print("ai amor ${tipo_conta}");
+                return Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 50, left: 40),
-                      child: Icon(
-                        Icons.account_circle_outlined,
-                        size: 35,
+                    Container(
+                      height: 60,
+                      color: Color.fromARGB(255, 255, 255, 255),
+                      child: const Row(
+                        // mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 50, left: 40),
+                            child: Icon(
+                              Icons.account_circle_outlined,
+                              size: 35,
+                            ),
+                          ),
+                          Text(
+                            'Conta',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          )
+                        ],
                       ),
                     ),
-                    Text(
-                      'Conta',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-              ),
-              Divider(
-                height: 5,
-                color: Colors.black,
-              ),
-              InkWell(
-                onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LoginPage(),
-                      ),
-                      (route) => false);
-                },
-                child: Container(
-                  height: 40,
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontSize: 16,
+                    Divider(
+                      height: 5,
+                      color: Colors.black,
+                    ),
+                    InkWell(
+                      onTap: () {
+                        Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginPage(),
+                            ),
+                            (route) => false);
+                      },
+                      child: Container(
+                        height: 40,
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Logout',
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                            )
+                          ],
                         ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-              Divider(
-                height: 5,
-                color: Colors.black,
-              ),
-            ],
-          ),
+                      ),
+                    ),
+                    Divider(
+                      height: 5,
+                      color: Colors.black,
+                    ),
+                    tipo_conta == "C" || tipo_conta == "B"
+                        ? InkWell(
+                            onTap: () {
+                              _showGoldAccountDialog(context);
+                            },
+                            child: Container(
+                              height: 40,
+                              color: Color.fromARGB(255, 255, 255, 255),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Comprar conta ouro',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Container(),
+                    Divider(
+                      height: 5,
+                      color: Colors.black,
+                    ),
+                    tipo_conta == "F"
+                        ? InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => UserListScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              height: 40,
+                              color: Color.fromARGB(255, 255, 255, 255),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Avaliar cuidadores',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Container(),
+                    Divider(
+                      height: 5,
+                      color: Colors.black,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                          top: MediaQuery.of(context).size.height * 0.3),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserListScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          height: 40,
+                          color: Color.fromARGB(255, 255, 255, 255),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed:
+                                        fontSizeProvider.increaseFontSize,
+                                    child: Text("Aumentar Fonte"),
+                                  ),
+                                  SizedBox(
+                                    width: 20,
+                                  ),
+                                  ElevatedButton(
+                                    onPressed:
+                                        fontSizeProvider.decreaseFontSize,
+                                    child: Text("Diminuir Fonte"),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,

@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:pi_flutter/views/paciente_page.dart';
 
 class PacienteCard extends StatelessWidget {
-  String nome;
+  dynamic paciente;
 
-  PacienteCard({super.key, required this.nome});
+  PacienteCard({super.key, required this.paciente});
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).pushReplacement(
             //-- Para eliminar o botao voltar da HomePage
-            MaterialPageRoute(builder: (context) => PacientePage()));
+            MaterialPageRoute(
+                builder: (context) => PacientePage(
+                      paciente: this.paciente,
+                    )));
       },
       child: Card(
         shape: RoundedRectangleBorder(
@@ -72,7 +75,7 @@ class PacienteCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  nome,
+                  paciente['nome'],
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

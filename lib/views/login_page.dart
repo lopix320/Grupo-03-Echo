@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pi_flutter/provider/api_user.dart';
 import 'package:pi_flutter/repository/user_repository.dart';
 import 'package:pi_flutter/views/main_page.dart';
 import 'package:pi_flutter/views/register_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_page.dart';
 import 'package:http/http.dart' as http;
 
@@ -16,6 +19,60 @@ class _LoginPageState extends State<LoginPage> {
   String password = '';
   bool seePassword = false;
   bool loginStatus = false;
+
+  Future<bool> onSubmit(data) async {
+    try {
+      print(data);
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:4445/usuario/auth'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        // Salvar informações do usuário no SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(responseData));
+
+        print('Usuário salvo: ${responseData}');
+        if (responseData['user'].length == 0) {
+          _showErrorDialog(context);
+          return false;
+        }
+        return true;
+      } else {
+        _showErrorDialog(context);
+        return false;
+      }
+    } catch (e) {
+      print('Erro na requisição: $e');
+      return false;
+    }
+  }
+
+  void _showErrorDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Erro"),
+          content: const Text("Credenciais Invalidas"),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fecha o modal
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                       const Padding(
                         padding: EdgeInsets.fromLTRB(0, 50, 0, 0),
                         child: Text(
-                          'Bem-vindo ao Echo!',
+                          'Bem-vindo ao SENIOR CARE!',
                           style: TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.bold,
@@ -148,20 +205,16 @@ class _LoginPageState extends State<LoginPage> {
                               //     ? null
                               //     :
                               () async {
-                            // loginStatus = await UserRepository(
-                            //         apiUser: ApiUser(
-                            //             httpClient: http.Client()))
-                            //     .login(email, password);
-                            // if (loginStatus) {
-                            //   print('Correto');
-                            //   // Navigator.of(context).pushNamed('/home');
-                            Navigator.of(context).pushReplacement(
-                                //-- Para eliminar o botao voltar da HomePage
-                                MaterialPageRoute(
-                                    builder: (context) => MainPage()));
-                            // } else {
-                            //   print('Login Invalido');
-                            // }
+                            loginStatus = await onSubmit(
+                                {"email": email, "senha": password});
+                            if (loginStatus) {
+                              Navigator.of(context).pushReplacement(
+                                  //-- Para eliminar o botao voltar da HomePage
+                                  MaterialPageRoute(
+                                      builder: (context) => MainPage()));
+                            } else {
+                              print('Login Invalido');
+                            }
                           },
                           child: const Text('Entrar'),
                         ),

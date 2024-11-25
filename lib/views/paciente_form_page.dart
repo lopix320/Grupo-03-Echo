@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pi_flutter/components/custom_checkbox.dart';
@@ -11,6 +13,8 @@ import 'home_page.dart';
 import 'package:http/http.dart' as http;
 
 class PacienteFormPage extends StatefulWidget {
+  dynamic firtForm;
+  PacienteFormPage({super.key, required this.firtForm});
   @override
   _PacienteFormPageState createState() => _PacienteFormPageState();
 }
@@ -42,11 +46,116 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
     "Acompanhamento noturno": false,
     "Atividades lúdicas": false,
   };
+
+  List servicoChecked = [];
   bool seePassword = false;
   bool loginStatus = false;
   List formacao = [1];
   List experiencia = [1];
-  bool _value = false;
+  bool mobilidade = false;
+  bool acompanhamento = false;
+  bool acessibilidade = false;
+
+  @override
+  void initState() {
+    print(widget.firtForm);
+    // TODO: implement initState
+    super.initState();
+  }
+
+  void updateSelectedValues(String value, bool isChecked) {
+    setState(() {
+      if (isChecked) {
+        // Se marcada, adiciona o valor na lista
+        servicoChecked.add(value);
+      } else {
+        // Se desmarcada, remove o valor da lista
+        servicoChecked.remove(value);
+      }
+    });
+  }
+
+  Future<List> fetchCheckboxData() async {
+    final response =
+        await http.post(Uri.parse('http://10.0.2.2:4445/servico/getAll'));
+
+    if (response.statusCode == 200) {
+      // Se a requisição for bem-sucedida, converte o JSON para uma lista de títulos
+      dynamic data = jsonDecode(response.body);
+      print(data['servico']);
+      return data['servico'];
+    } else {
+      // Se falhar, lança um erro
+      throw Exception('Falha ao carregar dados');
+    }
+  }
+
+  Future<bool> onSubmit(data) async {
+    try {
+      print(data);
+      final response =
+          await http.post(Uri.parse('http://10.0.2.2:4445/usuario/register'),
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(data));
+
+      if (response.statusCode == 200) {
+        // Se a requisição for bem-sucedida, exibe o modal de sucesso
+        _showSuccessDialog(context);
+        return true;
+      } else {
+        // Caso contrário, exibe um modal de erro
+        _showErrorDialog(context);
+        return false;
+      }
+    } catch (e) {
+      print('Erro na requisição: $e');
+      _showErrorDialog(context);
+      return false;
+    }
+  }
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Sucesso"),
+          content: const Text("Seu cadastro foi concluído com sucesso!"),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fecha o modal
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Função para mostrar o modal de erro
+  void _showErrorDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Erro"),
+          content: const Text("Ocorreu um erro ao concluir seu cadastro."),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fecha o modal
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Color getColor(Set<MaterialState> states) {
     const Set<MaterialState> interactiveStates = <MaterialState>{
@@ -115,10 +224,10 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                               ],
                             ),
                             CupertinoSwitch(
-                              value: _value,
+                              value: mobilidade,
                               onChanged: (value) {
                                 setState(() {
-                                  _value = value;
+                                  mobilidade = value;
                                 });
                               },
                               activeColor: Colors
@@ -139,10 +248,10 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                               ],
                             ),
                             CupertinoSwitch(
-                              value: _value,
+                              value: acompanhamento,
                               onChanged: (value) {
                                 setState(() {
-                                  _value = value;
+                                  acompanhamento = value;
                                 });
                               },
                               activeColor: Colors
@@ -176,10 +285,10 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                               ],
                             ),
                             CupertinoSwitch(
-                              value: _value,
+                              value: acessibilidade,
                               onChanged: (value) {
                                 setState(() {
-                                  _value = value;
+                                  acessibilidade = value;
                                 });
                               },
                               activeColor: Colors
@@ -242,103 +351,47 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                                 fontWeight: FontWeight.w700),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text:
-                                  "Acompanhamento em saídas (supermercado, shopping, etc)"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text:
-                                  "Acompanhamento terapêutico (consultas, pós operatório, etc)"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Administração de medicamentos"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Banho"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Administração de refeições "),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Transporte"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Companhia"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Preparo de refeições"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Higiene pessoal"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Manutenção do ambiente"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Acompanhamento noturno"),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(0),
-                          child: CustomCheckbox(
-                              checkedInfo: checkedInfo2,
-                              isChecked: isChecked,
-                              setState: setState,
-                              text: "Atividades lúdicas"),
+                        FutureBuilder<List>(
+                          future:
+                              fetchCheckboxData(), // Chama a função assíncrona
+                          builder: (context, snapshot) {
+                            // if (snapshot.connectionState ==
+                            //     ConnectionState.waiting) {
+                            //   return Center(child: CircularProgressIndicator());
+                            // }
+
+                            if (snapshot.hasError) {
+                              return Center(
+                                  child: Text('Erro: ${snapshot.error}'));
+                            }
+
+                            if (snapshot.hasData) {
+                              List data = snapshot.data!;
+                              return ListView.builder(
+                                physics: NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemCount: data.length,
+                                itemBuilder: (context, index) {
+                                  final checkboxData = data[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.all(0),
+                                    child: CheckboxListTile(
+                                      title: Text(checkboxData['descricao']),
+                                      value: servicoChecked.contains(checkboxData[
+                                          'id_servico']), // Verifica se o valor já está na lista
+                                      onChanged: (bool? value) {
+                                        updateSelectedValues(
+                                            checkboxData['id_servico'], value!);
+                                      },
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+
+                            return Center(
+                                child: Text('Nenhum dado encontrado'));
+                          },
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -414,6 +467,24 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                             ),
                             backgroundColor: Color.fromARGB(255, 54, 105, 201)),
                         onPressed: () async {
+                          // print({
+                          //   "firtFormData": widget.firtForm,
+                          //   "secondFormData": {
+                          //     "acessibilidade": acessibilidade,
+                          //     "mobilidade": mobilidade,
+                          //     "acompanhamento": acompanhamento,
+                          //     "servico": servicoChecked
+                          //   }
+                          // });
+                          dynamic response = await onSubmit({
+                            "firtFormData": widget.firtForm,
+                            "secondFormData": {
+                              "acessibilidade": acessibilidade,
+                              "mobilidade": mobilidade,
+                              "acompanhamento": acompanhamento,
+                              "servico": servicoChecked
+                            }
+                          });
                           // loginStatus = await UserRepository(
                           //         apiUser: ApiUser(
                           //             httpClient: http.Client()))
@@ -421,10 +492,10 @@ class _PacienteFormPageState extends State<PacienteFormPage> {
                           // if (loginStatus) {
                           //   print('Correto');
                           //   // Navigator.of(context).pushNamed('/home');
-                          Navigator.of(context).pushReplacement(
-                              //-- Para eliminar o botao voltar da HomePage
-                              MaterialPageRoute(
-                                  builder: (context) => MainPage()));
+                          // Navigator.of(context).pushReplacement(
+                          //     //-- Para eliminar o botao voltar da HomePage
+                          //     MaterialPageRoute(
+                          //         builder: (context) => MainPage()));
                           // } else {
                           //   print('Login Invalido');
                           // }

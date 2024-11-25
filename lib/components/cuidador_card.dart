@@ -1,18 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:pi_flutter/util/FontSizeProvider.dart';
 import 'package:pi_flutter/views/cuidador_page.dart';
 import 'package:pi_flutter/views/paciente_page.dart';
+import 'package:provider/provider.dart';
 
 class CuidadorCard extends StatelessWidget {
-  String nome;
+  dynamic cuidador;
 
-  CuidadorCard({super.key, required this.nome});
+  CuidadorCard({super.key, required this.cuidador});
+
+  double calcularMediaNotas() {
+    // Acessar o array 'contratacoes'
+    List<dynamic> contratacoes = this.cuidador['cuidador'][0]['contratacoes'];
+
+    // Verificar se o array é válido e contém elementos
+    if (contratacoes.isNotEmpty) {
+      double somaNotas =
+          contratacoes.fold(0.0, (soma, item) => soma + item['nota']);
+      return somaNotas / contratacoes.length;
+    } else {
+      return 0.0; // Retorna 0.0 se não houver notas
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fontSizeProvider = Provider.of<FontSizeProvider>(context);
+
+    var mediaNota = this.cuidador['cuidador'][0]['contratacoes'];
+
+    print("meu cuidador $cuidador");
     return GestureDetector(
       onTap: () {
         Navigator.of(context).pushReplacement(
-            //-- Para eliminar o botao voltar da HomePage
-            MaterialPageRoute(builder: (context) => CuidadorPage()));
+          //-- Para eliminar o botao voltar da HomePage
+          MaterialPageRoute(
+            builder: (context) => CuidadorPage(
+              cuidador: this.cuidador,
+            ),
+          ),
+        );
       },
       child: Card(
         shape: RoundedRectangleBorder(
@@ -46,26 +73,15 @@ class CuidadorCard extends StatelessWidget {
               // Ícones abaixo da imagem
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
+                children: List.generate(3, (index) {
+                  return Icon(
                     Icons.star,
-                    size: 24,
-                    color: Colors.yellow,
-                  ),
-                  SizedBox(width: 10),
-                  const Icon(
-                    Icons.star,
-                    size: 24,
-                    color: Colors.yellow,
-                  ),
-                  SizedBox(width: 10),
-                  Icon(
-                    Icons.star,
-                    size: 24,
-                    color: Colors.grey[300],
-                  ),
-                  SizedBox(width: 10),
-                ],
+                    color: index < calcularMediaNotas()
+                        ? Colors.yellow
+                        : Colors.grey,
+                    size: 40,
+                  );
+                }),
               ),
               SizedBox(height: 10),
 
@@ -73,9 +89,9 @@ class CuidadorCard extends StatelessWidget {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Text(
-                  nome,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  cuidador['nome'],
+                  style: TextStyle(
+                    fontSize: fontSizeProvider.fontSize,
                     fontWeight: FontWeight.bold,
 
                     color: Colors.black, // Cor do texto específica

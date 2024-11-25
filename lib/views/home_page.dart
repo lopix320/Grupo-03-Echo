@@ -1,32 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:pi_flutter/components/carrousel_card.dart';
-import 'package:pi_flutter/components/category_scroll.dart';
+
 import 'package:pi_flutter/components/cuidador_card.dart';
 import 'package:pi_flutter/components/paciente_card.dart';
-import 'package:pi_flutter/home_controller.dart';
-import 'package:pi_flutter/models/product_model.dart';
-import 'package:pi_flutter/provider/api_product.dart';
-import 'package:pi_flutter/repository/product_repository.dart';
+
 import 'package:http/http.dart' as http;
-import 'package:pi_flutter/views/cart_page.dart';
-import 'package:pi_flutter/views/paciente_page.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:pi_flutter/util/FontSizeProvider.dart';
+import 'package:provider/provider.dart';
 
-import '../components/custom_bottom_navigation_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// class HomePage extends StatelessWidget {
-//   const HomePage({Key? key}) : super(key: key);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     var controller = HomeController.of(context);
-//     final size = MediaQuery.of(context).size;
-//     final navigation = Navigator.of(context);
-//     final theme = Theme.of(context);
-
-//
-//   }
-// }
+import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -36,26 +21,76 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  var counter = 0;
-  var _currentIndex = 0;
-  List<dynamic> product = [];
-  List<dynamic> productFiltered = [];
-  List<dynamic> pacientes = [
-    "Gabriel Lopes",
-    "João Carlos",
-    "Pedro Henrique",
-    "Lucas Damasco"
-  ];
+  Future<Map<String, dynamic>?> getUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString('user');
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  // }
+    if (userData != null) {
+      return jsonDecode(userData);
+    }
+    return null;
+  }
 
-  // @override
-  // void dispose() {
-  //   super.dispose();
-  // }
+  Future<List<dynamic>> fetchUsers() async {
+    try {
+      // URL da API (substitua pelo endpoint real)
+      dynamic user = await getUser();
+      dynamic paciente = user['user'][0]['paciente'].length > 0;
+
+      dynamic url;
+      dynamic response;
+      if (paciente) {
+        url = Uri.parse('http://10.0.2.2:4445/usuario/getAll');
+        response = await http.get(url);
+      } else {
+        dynamic id_cuidador = user['user'][0]['cuidador'][0]['id_cuidador'];
+        url = Uri.parse('http://10.0.2.2:4445/usuario/getPacientesCuidador');
+        response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'id_cuidador': id_cuidador}),
+        );
+      }
+
+      // Realizando a requisição GET
+
+      // Verifica se a resposta foi bem-sucedida
+      if (response.statusCode == 200) {
+        // Decodifica o corpo da resposta
+        final data = jsonDecode(response.body);
+        print(data);
+        // Mapeando a lista de pacientes (ajuste a chave conforme o formato da sua API)
+        List<dynamic> usuarios = List<dynamic>.from(data['usuarios']);
+
+        dynamic user = await getUser();
+
+        print(usuarios);
+
+        dynamic filteredUsers;
+
+        if (user['user'][0]['paciente'].length > 0) {
+          filteredUsers = usuarios
+              .where((usuario) => usuario['cuidador'].length > 0)
+              .toList();
+        }
+        if (user['user'][0]['cuidador'].length > 0) {
+          filteredUsers = usuarios
+              .where((usuario) => usuario['paciente'].length > 0)
+              .toList();
+        }
+
+        return filteredUsers;
+      } else {
+        throw Exception(
+            'Erro ao buscar pacientes: Código ${response.statusCode}');
+      }
+    } catch (e) {
+      // Lida com erros de conexão ou outros
+      throw Exception('Erro ao buscar pacientes: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,82 +100,102 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
         child: Column(
           children: [
-            TextField(
-              onChanged: (value) {
-                productFiltered = product
-                    .where((element) => element.title
-                        .trim()
-                        .toLowerCase()
-                        .startsWith(value.trim().toLowerCase()))
-                    .toList();
-                if (productFiltered.isEmpty) {
-                  print('vazio');
-                  productFiltered = product;
+            FutureBuilder(
+              future: getUser(),
+              builder: (context, snapshot) {
+                print('teste 2: ${snapshot.data}');
+                var usuario = snapshot.data!['user'][0];
+                if (usuario['paciente'].length > 0) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Cuidadores:",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
+                        )
+                      ],
+                    ),
+                  );
+                } else if (usuario['cuidador'].length > 0) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Pacientes que querem entrar em contato:",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
+                        )
+                      ],
+                    ),
+                  );
                 }
-                setState(() {});
-                print(value);
-                print(productFiltered[0].title);
-                print('testebom');
-              },
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                suffixIcon: Icon(Icons.search),
-                suffixIconColor: Colors.black,
-                contentPadding: EdgeInsets.fromLTRB(25, 0, 0, 0),
-                labelText: 'O que você procura?',
-                labelStyle: TextStyle(fontSize: 15),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(15),
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        "Cuidador:",
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w500),
+                      )
+                    ],
                   ),
-                ),
-                filled: true,
-                fillColor: Color.fromARGB(255, 240, 240, 240),
-              ),
-            ),
-            // const CarrouselCard(),
-            // const CategoryScroll(),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.0),
-              child: Row(
-                children: [
-                  Text(
-                    "Cuidador:",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  )
-                ],
-              ),
-            ),
-
-            GridView.builder(
-              itemCount: pacientes.length,
-              physics: NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // 2 colunas
-                crossAxisSpacing: 4, // Espaçamento entre colunas
-                mainAxisSpacing: 4, // Espaçamento entre linhas
-                childAspectRatio:
-                    0.7, // Proporção da largura para a altura do card
-              ),
-              itemBuilder: (context, index) {
-                return CuidadorCard(
-                  nome: pacientes[index],
                 );
-                // return PacienteCard(
-                //   nome: pacientes[index],
-                // );
               },
             ),
-
-            // PacienteCard(),
+            FutureBuilder<List<dynamic>>(
+              future: fetchUsers(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text("Erro: ${snapshot.error}"),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text("Nenhum dado encontrado."),
+                  );
+                } else {
+                  return GridView.builder(
+                    itemCount: snapshot.data!.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2, // 2 colunas
+                      crossAxisSpacing: 4, // Espaçamento entre colunas
+                      mainAxisSpacing: 4, // Espaçamento entre linhas
+                      childAspectRatio:
+                          0.7, // Proporção da largura para a altura do card
+                    ),
+                    itemBuilder: (context, index) {
+                      if (snapshot.data![index]['paciente'].length > 0) {
+                        return PacienteCard(paciente: snapshot.data![index]);
+                      } else {
+                        return CuidadorCard(
+                          cuidador: snapshot.data![index],
+                        );
+                      }
+                    },
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+
+
 
 
 // Container(
